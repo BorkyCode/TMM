@@ -17,7 +17,7 @@ const int DefaultPollInterval = 2000;
 const int ActivePollInterval = 750;
 
 const char* MoreModsLink = "https://www.tumblr.com/tagged/tera+mods";
-const char* UpdateLink = "https://github.com/VenoMKO/TMM/releases";
+const char* UpdateLink = "https://github.com/BorkyCode/TMM/releases";
 
 wxString TfcName(int idx, bool extension)
 {
