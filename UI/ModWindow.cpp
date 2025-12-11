@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <thread>
 
+#include "../include/Compatibility.h"
+
 const int DefaultPollInterval = 2000;
 const int ActivePollInterval = 750;
 
@@ -126,6 +128,11 @@ ModWindow::ModWindow(wxWindow* parent, const std::vector<ModEntry>& entries, wxW
 
 	WaitTeraCheckbox = new wxCheckBox(m_panel1, wxID_ANY, _("Skip launcher integrity check"), wxDefaultPosition, wxDefaultSize, 0);
 	WaitTeraCheckbox->SetValue(GetApp()->GetWaitForTera());
+	if (WaitTeraCheckbox->GetValue())
+	{
+		WaitTeraCheckbox->SetValue(false);
+		WaitTeraCheckbox->SetValue(true);
+	}
 	bSizer3->Add(WaitTeraCheckbox, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
 
 
@@ -174,7 +181,8 @@ ModWindow::ModWindow(wxWindow* parent, const std::vector<ModEntry>& entries, wxW
 bool ModWindow::OnModStateChange(ModEntry& mod)
 {
 	bool ok = false;
-	ProgressWindow progress(this, (mod.Enabled ? wxT("Enabling: ") : wxT("Disabling: ")) + mod.File);
+	ProgressWindow progress(this,
+		(mod.Enabled ? wxT("Enabling: ") : wxT("Disabling: ")) + wxString(mod.File));
 	progress.SetProgress(ProgressWindow::PW_IndeterminateProgress);
 	std::thread([&] {
 		if (mod.Enabled)
@@ -299,7 +307,7 @@ void ModWindow::OnRemoveClicked(wxCommandEvent& event)
 		for (ModEntry& e : itemsToRemove)
 		{
 			wxString modName = e.Mod.ModName.size() ? e.Mod.ModName : (e.File + ".gpk");
-			progress.SetActionText(wxT("Removing mod: ") + e.File + ".gpk");
+			progress.SetActionText(wxT("Removing mod: ") + wxString(e.File) + wxT(".gpk"));
 			if (e.Enabled && !TurnOffMod(e.Mod))
 			{
 				wxMessageBox(_("Failed to disable mod: ") + e.File + ".gpk", _("Error!"), wxICON_ERROR);
@@ -353,7 +361,7 @@ void ModWindow::OnTurnOnClicked(wxCommandEvent& event)
 			if (!e->Enabled)
 			{
 				e->Enabled = true;
-				progress.SetActionText(wxT("Enabling: ") + e->File);
+				progress.SetActionText(wxT("Enabling: ") + wxString(e->File));
 				if (!TurnOnMod(e->Mod))
 				{
 					e->Enabled = false;
@@ -410,7 +418,7 @@ void ModWindow::OnTurnOffClicked(wxCommandEvent& event)
 			tmp.push_back(e->Enabled);
 			if (e->Enabled)
 			{
-				progress.SetActionText(wxT("Disabling: ") + e->File);
+				progress.SetActionText(wxT("Disabling: ") + wxString(e->File));
 				e->Enabled = false;
 				if (!TurnOffMod(e->Mod))
 				{
@@ -613,7 +621,7 @@ void ModWindow::OnIdle(wxIdleEvent& event)
 		// Turn on all mods to make sure tmm is in sync with the map file
 		for (ModEntry& entry : ModList)
 		{
-			progress.SetActionText(wxT("Processing: ") + entry.Mod.Container);
+			progress.SetActionText(wxT("Processing: ") + wxString(entry.Mod.Container));
 			if (!entry.Enabled)
 			{
 				if (!teraUpdated)
@@ -741,6 +749,7 @@ bool ModWindow::InstallMod(const std::wstring& path, bool save)
 		std::ifstream s(path, std::ios::binary | std::ios::in);
 		s >> mod;
 	}
+	for (auto& p : mod.Packages) p.FileVersion = VER_TERA_MODERN;
 	if (mod.Packages.empty())
 	{
 		std::filesystem::path item(path);
@@ -977,11 +986,16 @@ bool ModWindow::InstallMod(const std::wstring& path, bool save)
 					{
 						if (len < 0)
 						{
-							memcpy(writeBuffer + namesOffset + 4, (char*)newTfcName.c_str(), std::min(name.size(), newTfcName.size()) * 2);
+							// UTF-16 wide string copy
+							size_t bytesToCopy = std::min(name.size(), newTfcName.size()) * 2;
+							memcpy(writeBuffer + namesOffset + 4, newTfcName.c_str(), bytesToCopy);
 						}
 						else
 						{
-							memcpy(writeBuffer + namesOffset + 4, W2A(newTfcName).c_str(), std::min(name.size(), newTfcName.size()));
+							// ANSI (UTF-8) copy
+							std::string converted = W2A(newTfcName.c_str());
+							size_t bytesToCopy = std::min(name.size(), converted.size());
+							memcpy(writeBuffer + namesOffset + 4, converted.c_str(), bytesToCopy);
 						}
 						break;
 					}

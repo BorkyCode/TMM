@@ -105,18 +105,31 @@ void RootDirWindow::OnTextEnterEvent(wxCommandEvent& event)
 
 void RootDirWindow::OnBrowseClicked(wxCommandEvent& event)
 {
-	wxDirDialog openPanel(this, wxS("Select \"") + RootDir + wxS("\" folder"), PathField->GetLabelText());
-	openPanel.Center();
-	if (openPanel.ShowModal() == wxID_OK)
+	wxString startDir = PathField->GetValue();   
+	if (startDir.empty() || !wxDirExists(startDir))
+		startDir = wxEmptyString;
+
+	wxDirDialog dlg(this,
+		wxS("Select \"") + RootDir + wxS("\" folder"),
+		startDir,
+		wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+
+	dlg.Center();
+
+	if (dlg.ShowModal() == wxID_OK)
 	{
-		const wxString path = openPanel.GetPath();
+		wxString path = dlg.GetPath();
+
 		if (IsValidDir(path))
 		{
-			PathField->SetLabelText(path);
+			PathField->SetValue(path);
+			OkButton->Enable(true);
+			PathField->SetFocus();
 		}
 		else
 		{
-			wxMessageBox(wxS("Folder must be called \"") + RootDir + wxS("\""), wxS("Error: Invalid path!"), wxICON_ERROR);
+			wxMessageBox(wxS("Folder must be called \"") + RootDir + wxS("\""),
+				wxS("Error: Invalid path!"), wxICON_ERROR);
 		}
 	}
 }

@@ -1,5 +1,6 @@
 #include "Mod.h"
 #include "../Utils.h"
+#include "../include/Compatibility.h"
 
 #define PACKAGE_MAGIC 0x9E2A83C1
 #define MAX_STRLEN 1024
@@ -30,7 +31,7 @@ std::string GetString(std::ifstream& s)
     wstr.resize(-size);
     size = -size * 2;
     s.read((char*)&wstr[0], size);
-    result = W2A(wstr);
+    result = W2A(wstr.c_str());
   }
   return result;
 }
@@ -40,7 +41,7 @@ void SetString(std::ofstream& s, std::string str)
   int size = str.size();
   if (!IsAnsi(str))
   {
-    std::wstring wstr = A2W(str);
+    std::wstring wstr = A2W(str.c_str());
     size = -(int)wstr.size();
     s.write((char*)&size, sizeof(size));
     s.write((char*)wstr.c_str(), size * -2);

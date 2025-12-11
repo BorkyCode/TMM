@@ -1,6 +1,8 @@
 #include "CompositeMapper.h"
 #include "../Utils.h"
 
+#include "../include/Compatibility.h"
+
 #include <fstream>
 #include <array>
 #include <thread>
