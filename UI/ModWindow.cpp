@@ -157,7 +157,7 @@ ModWindow::ModWindow(wxWindow* parent, const std::vector<ModEntry>& entries, wxW
 
 	Centre(wxBOTH);
 
-	WaitTeraCheckbox->SetToolTip(_("Usefull for KR/TW Tera. Applies mods after launcher integrity check. Do not close TMM until you exit Tera."));
+	WaitTeraCheckbox->SetToolTip(_("Useful for KR/TW Tera. Applies mods after launcher integrity check. Do not close TMM until you exit Tera."));
 	ModsAppliedTextField->Show(false);
 
 	ModListView->AppendToggleColumn(_("On/Off"), ModUIModel::Col_Check, wxDATAVIEW_CELL_ACTIVATABLE, 55);

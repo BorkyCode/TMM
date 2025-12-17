@@ -95,24 +95,25 @@ void TMM::UpdateModsList(const std::vector<ModEntry> modData)
 
 bool TMM::BackupCompositeMapperFile()
 {
-  if (!std::filesystem::exists(CompositeMapperPath))
-  {
-    return false;
-  }
-  std::error_code err;
-  if (!std::filesystem::exists(BackupCompositeMapperPath))
-  {
-    return std::filesystem::copy_file(CompositeMapperPath, BackupCompositeMapperPath, err);
-  }
-  else
-  {
-    if (!std::filesystem::remove(BackupCompositeMapperPath, err))
+    if (!std::filesystem::exists(CompositeMapperPath))
     {
-      return false;
+        return false;
     }
-    return std::filesystem::copy_file(CompositeMapperPath, BackupCompositeMapperPath, err);
-  }
-  return true;
+
+    if (std::filesystem::exists(BackupCompositeMapperPath))
+    {
+        return true;
+    }
+
+    std::error_code err;
+    std::filesystem::copy_file(CompositeMapperPath, BackupCompositeMapperPath, err);
+
+    if (err)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 int TMM::OnRun()
@@ -134,40 +135,69 @@ int TMM::OnRun()
 
 bool TMM::SetupPaths()
 {
-  if (RootDir.empty() || !std::filesystem::exists(RootDir))
-  {
-    RootDirWindow rooWin(nullptr, RootDir.wstring());
-    if (rooWin.ShowModal() == wxID_OK)
-    {
-      RootDir = rooWin.GetPath().ToStdWstring();
-    }
     if (RootDir.empty() || !std::filesystem::exists(RootDir))
     {
-      return false;
+        RootDirWindow rooWin(nullptr, RootDir.wstring());
+        if (rooWin.ShowModal() == wxID_OK)
+        {
+            RootDir = rooWin.GetPath().ToStdWstring();
+        }
+        if (RootDir.empty() || !std::filesystem::exists(RootDir))
+        {
+            return false;
+        }
     }
-  }
 
-  CompositeMapperPath = RootDir / CookedPcDir / CompositeMapperFile;
-
-  while (!std::filesystem::exists(CompositeMapperPath))
-  {
-    wxMessageBox(_("Couldn't find \"S1Game\\CookedPC\\CompositePackageMapper.dat\" file."), _("Error!"), wxICON_ERROR);
-    RootDirWindow rooWin(nullptr, RootDir.wstring());
-    if (rooWin.ShowModal() != wxID_OK)
-    {
-      return false;
-    }
-    RootDir = rooWin.GetPath().ToStdWstring();
-    if (RootDir.empty() || !std::filesystem::exists(RootDir))
-    {
-      return false;
-    }
     CompositeMapperPath = RootDir / CookedPcDir / CompositeMapperFile;
-  }
+    BackupCompositeMapperPath = (RootDir / ModsStorageDir) / CompositeMapperBackupFile;
 
-  ClientDir = RootDir.parent_path();
-  ModsDir = RootDir / ModsStorageDir;
-  BackupCompositeMapperPath = ModsDir / CompositeMapperBackupFile;
-  GameConfigPath = ModsDir / GameConfigFilePath;
-  return true;
+    if (!BackupCompositeMapperFile())
+    {
+        wxMessageBox(
+            _("Could not create the backup file \"CompositePackageMapper.clean\".\n\n"
+                "TMM needs to make a one-time backup of the original CompositePackageMapper.dat.\n"
+                "Please ensure:\n"
+                "TERA is not running\n"
+                "You have write permissions in the CookedPC folder\n"
+                "Sufficient disk space is available\n\n"
+                "After fixing the issue, restart TMM."),
+            _("Backup Creation Failed"),
+            wxICON_ERROR
+        );
+        return false;
+    }
+
+    while (!std::filesystem::exists(CompositeMapperPath))
+    {
+        wxMessageBox(_("Couldn't find \"S1Game\\CookedPC\\CompositePackageMapper.dat\" file."), _("Error!"), wxICON_ERROR);
+        RootDirWindow rooWin(nullptr, RootDir.wstring());
+        if (rooWin.ShowModal() != wxID_OK)
+        {
+            return false;
+        }
+        RootDir = rooWin.GetPath().ToStdWstring();
+        if (RootDir.empty() || !std::filesystem::exists(RootDir))
+        {
+            return false;
+        }
+        CompositeMapperPath = RootDir / CookedPcDir / CompositeMapperFile;
+        BackupCompositeMapperPath = (RootDir / ModsStorageDir) / CompositeMapperBackupFile;
+
+        if (!BackupCompositeMapperFile())
+        {
+            wxMessageBox(
+                _("Failed to create backup after changing directory.\n"
+                    "Please ensure write permissions and that TERA is not running."),
+                _("Error!"),
+                wxICON_ERROR
+            );
+            return false;
+        }
+    }
+
+    ClientDir = RootDir.parent_path();
+    ModsDir = RootDir / ModsStorageDir;
+    GameConfigPath = ModsDir / GameConfigFilePath;
+
+    return true;
 }
